@@ -23,6 +23,11 @@ type GitBranchUpdatedMsg struct {
 	Branch string
 }
 
+type StatusMessageMsg struct {
+	Message string
+	Variant string
+}
+
 type StatusComponent interface {
 	tea.Model
 	tea.ViewModel
@@ -30,13 +35,15 @@ type StatusComponent interface {
 }
 
 type statusComponent struct {
-	app        *app.App
-	width      int
-	cwd        string
-	branch     string
-	watcher    *fsnotify.Watcher
-	done       chan struct{}
-	lastUpdate time.Time
+	app           *app.App
+	width         int
+	cwd           string
+	branch        string
+	statusMessage string
+	statusVariant string
+	watcher       *fsnotify.Watcher
+	done          chan struct{}
+	lastUpdate    time.Time
 }
 
 func (m *statusComponent) Init() tea.Cmd {
@@ -54,6 +61,10 @@ func (m *statusComponent) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		// Continue watching for changes (persistent watcher)
 		return m, m.watchForGitChanges()
+	case StatusMessageMsg:
+		m.statusMessage = msg.Message
+		m.statusVariant = msg.Variant
+		return m, nil
 	}
 	return m, nil
 }
@@ -164,6 +175,30 @@ func (m *statusComponent) View() string {
 		branchSuffix = ":" + m.branch
 	}
 
+	// Calculate status message width if present
+	statusMessageWidth := 0
+	var statusMessageView string
+	if m.statusMessage != "" {
+		var msgColor compat.AdaptiveColor
+		switch m.statusVariant {
+		case "success":
+			msgColor = t.Success()
+		case "warning":
+			msgColor = t.Warning()
+		case "error":
+			msgColor = t.Error()
+		default: // "info" or empty
+			msgColor = t.Info()
+		}
+		statusMessageView = styles.NewStyle().
+			Foreground(msgColor).
+			Background(t.BackgroundPanel()).
+			Padding(0, 1).
+			Render(m.statusMessage)
+		statusMessageWidth = lipgloss.Width(statusMessageView)
+		availableWidth -= statusMessageWidth
+	}
+
 	maxCwdWidth := availableWidth - lipgloss.Width(branchSuffix)
 	cwdDisplay := m.collapsePath(m.cwd, maxCwdWidth)
 
@@ -178,6 +213,13 @@ func (m *statusComponent) View() string {
 		Render(cwdDisplay)
 
 	background := t.BackgroundPanel()
+
+	// Build left section with logo, cwd, and optional status message
+	leftView := logo + cwd
+	if m.statusMessage != "" {
+		leftView += statusMessageView
+	}
+
 	status := layout.Render(
 		layout.FlexOptions{
 			Background: &background,
@@ -187,7 +229,7 @@ func (m *statusComponent) View() string {
 			Width:      m.width,
 		},
 		layout.FlexItem{
-			View: logo + cwd,
+			View: leftView,
 		},
 		layout.FlexItem{
 			View: agent,

@@ -869,6 +869,22 @@ func (a Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			cmds = append(cmds, toastCmd)
 
+		case "/tui/show-status-message":
+			var body struct {
+				Message string `json:"message"`
+				Variant string `json:"variant,omitempty"`
+			}
+			json.Unmarshal((msg.Body), &body)
+
+			// Send StatusMessageMsg to status component
+			statusMsg := status.StatusMessageMsg{
+				Message: body.Message,
+				Variant: body.Variant,
+			}
+			s, cmd := a.status.Update(statusMsg)
+			a.status = s.(status.StatusComponent)
+			cmds = append(cmds, cmd)
+
 		default:
 			break
 		}

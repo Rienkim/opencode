@@ -1390,6 +1390,31 @@ export namespace Server {
         ),
         async (c) => c.json(await callTui(c)),
       )
+      .post(
+        "/tui/show-status-message",
+        describeRoute({
+          description: "Show a status message in the TUI status bar",
+          operationId: "tui.showStatusMessage",
+          responses: {
+            200: {
+              description: "Status message shown successfully",
+              content: {
+                "application/json": {
+                  schema: resolver(z.boolean()),
+                },
+              },
+            },
+          },
+        }),
+        validator(
+          "json",
+          z.object({
+            message: z.string(),
+            variant: z.enum(["info", "success", "warning", "error"]).optional(),
+          }),
+        ),
+        async (c) => c.json(await callTui(c)),
+      )
       .route("/tui/control", TuiRoute)
       .put(
         "/auth/:id",

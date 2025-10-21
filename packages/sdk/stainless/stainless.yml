@@ -172,6 +172,7 @@ resources:
       openModels: post /tui/open-models
       executeCommand: post /tui/execute-command
       showToast: post /tui/show-toast
+      showStatusMessage: post /tui/show-status-message
 
 settings:
   disable_mock_tests: true
